@@ -32,7 +32,9 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.movieapp.model.Movie
+import com.example.movieapp.model.getMovies
 import com.example.movieapp.navigation.MovieScreens
+import com.example.movieapp.widgets.MovieRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,55 +58,18 @@ fun HomeScreen(navController: NavController){
     }
 }
 
-@Composable
-fun MovieRow(movie: Movie, onItemClick: (Movie) -> Unit){
-    Card(modifier = Modifier
-        .padding(4.dp)
-        .fillMaxWidth()
-        .clickable {
-            onItemClick(movie)
-        }
-        .height(130.dp),
-//        onClick = {
-//          Another way to call click an element
-//        },
-        shape = RoundedCornerShape(corner = CornerSize(12.dp)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start) {
-            Surface(modifier = Modifier
-                .padding(12.dp)
-                .size(100.dp),
-                shape = RectangleShape,
-                shadowElevation = 4.dp){
-                Icon(imageVector = Icons.Default.AccountBox, contentDescription = "Movie Image")
-            }
-            Text(text = movie.name)
-        }
-    }
-}
+
 
 @Composable
 fun MainContent(
     navController: NavController,
-    movieList: List<Movie> = listOf(
-    Movie("Avatar", "James Cameron", "2009"),
-        Movie("300", "Zack Snyder", "2007"),
-        Movie("Harry Potter", "Chris Columbus", "2001"),
-        Movie("Invasión a la tierra", "Jonathan Liebesman", "2011"),
-        Movie("Inside Out", "Peter Docter", "2015"),
-        Movie("Alien el octavo pasajero", "Ridley Scott", "1979"),
-        Movie("Buscando a Dory", "Andrew Stanton", "2016"),
-        Movie("Monster Inc", "Pete Docter", "2001"),
-        Movie("Shrek", "Andrew Adamson", "2001"),
-        Movie("Fast And Furious", "Rob Cohen", "2001"),
-)){
+    movieList: List<Movie> = getMovies()
+){
     Surface (color = MaterialTheme.colorScheme.background) {
         LazyColumn (modifier = Modifier.padding(12.dp),content = {
             items(movieList.size) {
                 MovieRow(movie = movieList[it]){ movie ->
-                    navController.navigate(route = MovieScreens.DetailsScreen.name+"/${movie.name}/${movie.director}/${movie.year}")
+                    navController.navigate(route = MovieScreens.DetailsScreen.name+"/${movie.id}")
 
                 }
 

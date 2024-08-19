@@ -23,19 +23,15 @@ fun MovieNavigation() {
 
         }
 
-        composable(route = MovieScreens.DetailsScreen.name+"/{movie}/{director}/{year}",
+        composable(route = MovieScreens.DetailsScreen.name+"/{movieId}",
             arguments = listOf(
-                navArgument(name = "movie"){type = NavType.StringType},
-                navArgument(name = "director"){type = NavType.StringType}
+                navArgument(name = "movieId"){type = NavType.StringType},
+
             )){
 
             backStackEntry ->
-            val data = Movie(
-                backStackEntry.arguments?.getString("movie")!!,
-                backStackEntry.arguments?.getString("director")!!,
-                backStackEntry.arguments?.getString("year")!!
-            )
-            DetailScreen(navController = navController, movieData = data)
+            val movieId = backStackEntry.arguments?.getString("movieId")!!
+            DetailScreen(navController = navController, movieId = movieId)
         }
     }
 }
