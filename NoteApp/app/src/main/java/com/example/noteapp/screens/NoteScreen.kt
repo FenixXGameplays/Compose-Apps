@@ -39,6 +39,7 @@ import com.example.noteapp.components.NoteButton
 import com.example.noteapp.components.NoteInputText
 import com.example.noteapp.data.NotesDataSource
 import com.example.noteapp.model.Note
+import com.example.noteapp.utils.formateDate
 import com.example.noteapp.viewmodel.NoteViewModel
 import java.time.format.DateTimeFormatter
 
@@ -158,7 +159,7 @@ fun NoteRow(
             Text(text = note.description,
                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
             )
-            Text(text = note.entryDate.format(DateTimeFormatter.ofPattern("EEE, d MMM")),
+            Text(text = formateDate(note.entryDate.time),
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall
             )
         }

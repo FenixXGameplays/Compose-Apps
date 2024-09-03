@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -21,7 +22,9 @@ import com.example.noteapp.model.Note
 import com.example.noteapp.screens.NoteScreen
 import com.example.noteapp.ui.theme.NoteAppTheme
 import com.example.noteapp.viewmodel.NoteViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,9 +45,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun NotesApp(notesViewModel: NoteViewModel = viewModel()) {
     NoteScreen(
-        noteList = notesViewModel.getAllNotes(),
+        noteList = notesViewModel.noteList.collectAsState().value,
         onRemoveNote = {
-            notesViewModel.removeNote(it)
+            notesViewModel.removeNote(note = it)
         },
         onAddNote = {
             notesViewModel.addNote(it)
