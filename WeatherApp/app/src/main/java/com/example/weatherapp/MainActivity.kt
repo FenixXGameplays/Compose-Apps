@@ -1,7 +1,6 @@
 package com.example.weatherapp
 
 import android.annotation.SuppressLint
-import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,7 +13,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -22,17 +20,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -54,32 +49,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.getDrawable
-import androidx.core.graphics.drawable.toDrawable
-import com.example.weatherapp.Service.WeatherService
-import com.example.weatherapp.api.WeatherApi
+import com.example.weatherapp.model.HourDailyModel
 import com.example.weatherapp.model.WeatherModel
-import com.example.weatherapp.model.WeatherResponse
 import com.example.weatherapp.ui.theme.WeatherAppTheme
+import com.example.weatherapp.viewModel.WeatherHourInfoState
+import com.example.weatherapp.viewModel.WeatherNextDaysState
 import com.example.weatherapp.viewModel.WeatherState
 import com.example.weatherapp.viewModel.WeatherViewModel
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.Date
+import java.util.GregorianCalendar
 
 class MainActivity : ComponentActivity() {
     private val weatherviewModel: WeatherViewModel by viewModels()
@@ -94,6 +89,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         weatherviewModel.fetchWeatherData("Madrid")
+        weatherviewModel.fetchDailyHourWeatherData("Madrid")
+        weatherviewModel.fetchNextDaysWeatherData("Madrid")
     }
 }
 
@@ -111,6 +108,8 @@ fun WeatherScreen(weatherViewModel: WeatherViewModel){
 @Composable
 fun HomeScreen(weatherViewModel: WeatherViewModel) {
     val weatherState by weatherViewModel.weatherState.collectAsState()
+    val weatherHourInfoState by weatherViewModel.weatherHourInfoState.collectAsState()
+    val weatherNextDaysState by weatherViewModel.weatherNextDaysState.collectAsState()
 
 
     Surface(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -118,11 +117,13 @@ fun HomeScreen(weatherViewModel: WeatherViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 90.dp, start = 15.dp, end = 10.dp),
+                .padding(top = 90.dp, start = 15.dp, end = 10.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            MainInfo(weatherState = weatherState)
+            MainInfo(weatherState = weatherState,
+                weatherNextDaysState = weatherNextDaysState,
+                    weatherHourInfoState = weatherHourInfoState)
 
         }
     }
@@ -138,18 +139,38 @@ fun Weather_app(weatherData: WeatherModel) {
         "Clear" -> getDrawable(LocalContext.current, R.drawable.sol)
         else -> {getDrawable(LocalContext.current, R.drawable.sol)}
     }
-    Image(modifier = Modifier.size(250.dp).padding(top = 8.dp),
+    Image(modifier = Modifier
+        .size(250.dp)
+        .padding(top = 8.dp),
         painter = rememberDrawablePainter(
             drawable = drawabletoShow
         ),
         contentDescription = "Image",
         contentScale = ContentScale.FillWidth
     )
-
 }
 
 @Composable
-fun MainInfo(weatherState: WeatherState) {
+fun ShowIcon(typeData: String) {
+    val drawabletoShow = when(typeData){
+        "Clouds" -> getDrawable(LocalContext.current, R.drawable.nubes)
+        "Rain" -> getDrawable(LocalContext.current, R.drawable.lluvia)
+        "Clear" -> getDrawable(LocalContext.current, R.drawable.sol)
+        else -> {getDrawable(LocalContext.current, R.drawable.sol)}
+    }
+    Image(
+        painter = rememberDrawablePainter(
+            drawable = drawabletoShow
+        ),
+        contentDescription = "Image",
+        contentScale = ContentScale.FillWidth
+    )
+}
+
+@Composable
+fun MainInfo(weatherState: WeatherState,
+             weatherNextDaysState: WeatherNextDaysState,
+             weatherHourInfoState: WeatherHourInfoState) {
     Column(
         modifier = Modifier.padding(top = 20.dp, end = 15.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -157,13 +178,16 @@ fun MainInfo(weatherState: WeatherState) {
         var isVisible by remember {
             mutableStateOf(false)
         }
+
+
+
+
         when (weatherState) {
             is WeatherState.Success -> {
                 val weatherData = weatherState.weather
                 Weather_app(weatherData = weatherData)
                 MainData(weatherData)
                 Spacer(modifier = Modifier.height(20.dp))
-
                 Button(shape = RoundedCornerShape(5.dp),
                     onClick = {
                     isVisible=!isVisible
@@ -173,6 +197,36 @@ fun MainInfo(weatherState: WeatherState) {
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 MoreData(isVisible, weatherData)
+
+                
+                when(weatherHourInfoState){
+                    is WeatherHourInfoState.Success -> {
+                        val weatherHourInfoState = weatherHourInfoState.weather
+                        val today = LocalDate.now()
+                        val tomorrow = today.plusDays(1)
+                        ShowHourTemp(weatherHourInfoState, today, tomorrow)
+                    }
+                    is WeatherHourInfoState.Error -> {
+                        Text(text = "Failed to get the Hour info")
+                    }
+                    is WeatherHourInfoState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                }
+
+//                when(weatherNextDaysState){
+//                    is WeatherNextDaysState.Success -> {
+//                        val weatherNextDaysData = weatherNextDaysState.weather
+//                        Text(text = weatherNextDaysData.city.name)
+//                    }
+//                    is WeatherNextDaysState.Error -> {
+//                        Text(text = "Failed to get the next Days")
+//                    }
+//                    is WeatherNextDaysState.Loading -> {
+//                        CircularProgressIndicator()
+//                    }
+//                }
+
                 Text(text = "Developed By Enrique Fernández ")
 
             }
@@ -189,6 +243,118 @@ fun MainInfo(weatherState: WeatherState) {
         }
     }
 
+}
+
+@Composable
+private fun ShowHourTemp(
+    weatherHourInfoState: HourDailyModel,
+    today: LocalDate,
+    tomorrow: LocalDate,
+) {
+    LazyRow(verticalAlignment = Alignment.CenterVertically,
+        content = {
+            items(weatherHourInfoState.list.size) { index ->
+                val data = weatherHourInfoState.list[index]
+                val dateFormatted = data.dt_txt.substring(0, data.dt_txt.indexOf(" "))
+                if (dateFormatted == today.toString() || dateFormatted == tomorrow.toString()) {
+                    Card(
+                        shape = RoundedCornerShape(6.dp),
+                        colors = CardDefaults.cardColors(),
+                        modifier = Modifier
+                            .width(150.dp)
+                            .padding(6.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (dateFormatted == tomorrow.toString()) {
+                        Text(
+                            text = "Tomorrow",
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    } else if (dateFormatted == today.toString()) {
+                        Text(
+                            text = "Today",
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                            Text(
+                                text = data.dt_txt.substring(
+                                    data.dt_txt.indexOf(" ") + 1,
+                                    data.dt_txt.length - 3
+                                ) +
+                                        getPmAm(
+                                            data.dt_txt.substring(
+                                                data.dt_txt.indexOf(" ") + 1,
+                                                data.dt_txt.length - 3
+                                            )
+                                        ),
+                                fontSize = 15.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            ShowIcon(typeData = data.weather[0].main)
+                            val temp = (data.main.temp - 273.15).toString().substring(0, 2)
+                            if(data.pop * 100 > 0 && data.pop * 100 < 10){
+                                Text(
+                                    text = "Probability of Rain: ${(data.pop*100)
+                                        .toString()
+                                        .substring(
+                                            0,
+                                            1)
+                                    }%",
+                                    style = getColor(temp)
+                                )
+                            }else if(data.pop * 100 >= 10){
+                                Text(
+                                    text = "Probability of Rain: ${(data.pop*100)
+                                        .toString()
+                                        .substring(
+                                            0,
+                                            data.pop.
+                                            toString().
+                                            indexOf('.')+1)
+                                    }%",
+                                    style = getColor(temp)
+                                )
+                            }else{
+                                Text(text = "")
+                            }
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "${
+                                    (data.main.temp - 273.15)
+                                        .toString().substring(0, 2)
+                                }ºC",
+                                style = getColor(temp)
+                            )
+                        }
+
+                    }
+                }
+            }
+        })
+}
+
+fun getPmAm(text: String): String {
+    if(text.substring(0,2).toInt() >= 12){
+        return "pm"
+    }
+    return "am"
+}
+
+fun getColor(temp: String): TextStyle {
+    val color = if(temp.toInt() > 20){
+        Color.Red
+    }else{
+        Color.Blue
+    }
+    return TextStyle(color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -210,9 +376,9 @@ private fun ColumnScope.MoreData(
             .atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("HH:mm"))
         val itemsList = listOf(
-            "Min Temp: ${(weatherData.main.temp_min- 273.15).toString().substring(0,5)}ºC",
-            "Max Temp: ${(weatherData.main.temp_max- 273.15).toString().substring(0,5)}ºC",
-            "Feels like: ${(weatherData.main.feels_like- 273.15).toString().substring(0,5)}ºC",
+            "Min Temp: ${(weatherData.main.temp_min- 273.15).toString().substring(0,2)}ºC",
+            "Max Temp: ${(weatherData.main.temp_max- 273.15).toString().substring(0,2)}ºC",
+            "Feels like: ${(weatherData.main.feels_like- 273.15).toString().substring(0,2)}ºC",
             "Humidity: ${weatherData.main.humidity}%",
             "Sunrise: $sunrise",
             "Sunset: $sunset",
@@ -268,7 +434,7 @@ private fun ColumnScope.MoreData(
 private fun MainData(weatherData: WeatherModel) {
 
     Text(
-        text = "${(weatherData.main.temp - 273.15).toString().substring(0,5)}°C",
+        text = "${(weatherData.main.temp - 273.15).toString().substring(0,2)}°C",
         fontSize = 45.sp,
         color = Color.Black,
         fontWeight = FontWeight.Bold,
@@ -279,13 +445,6 @@ private fun MainData(weatherData: WeatherModel) {
         fontSize = 30.sp,
         color = Color.Black,
         fontWeight = FontWeight.Medium,
-    )
-    Text(
-        text = weatherData.weather[0].description,
-        fontSize = 18.sp,
-        textAlign = TextAlign.Center,
-        color = Color.DarkGray,
-        modifier = Modifier.padding(top = 10.dp)
     )
 }
 
@@ -317,6 +476,8 @@ fun EditTextButtonBar(weatherViewModel: WeatherViewModel) {
         Button(onClick = {
             if(text.isNotBlank()){
                 weatherViewModel.fetchWeatherData(city = text)
+                weatherViewModel.fetchDailyHourWeatherData(city = text)
+                weatherViewModel.fetchNextDaysWeatherData(city = text)
                 text = ""
                 keyboardController?.hide()
             }
