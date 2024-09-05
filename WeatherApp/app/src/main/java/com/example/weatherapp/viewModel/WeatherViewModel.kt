@@ -2,6 +2,7 @@ package com.example.weatherapp.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weatherapp.WeatherNextDays
 import com.example.weatherapp.api.WeatherApi
 import com.example.weatherapp.model.HourDailyModel
 import com.example.weatherapp.model.NextDaysModel
@@ -16,9 +17,15 @@ sealed class WeatherState{
     data class Error(val message:String):WeatherState()
 }
 
+//sealed class WeatherNextDaysState{
+//    object Loading:WeatherNextDaysState()
+//    data class Success(val weather: NextDaysModel):WeatherNextDaysState()
+//    data class Error(val message:String):WeatherNextDaysState()
+//}
+
 sealed class WeatherNextDaysState{
     object Loading:WeatherNextDaysState()
-    data class Success(val weather: NextDaysModel):WeatherNextDaysState()
+    data class Success(val weather: WeatherNextDays):WeatherNextDaysState()
     data class Error(val message:String):WeatherNextDaysState()
 }
 
@@ -70,21 +77,22 @@ class WeatherViewModel : ViewModel(){
         }
     }
 
-    fun fetchNextDaysWeatherData(city:String){
-        viewModelScope.launch {
-            try{
-                val response = WeatherApi.weatherService.getNextDays(
-                    apiKey = "544051addec007c3e927d2d16b40c737",
-                    quantity = "7",
-                    location = city
-                )
+//    fun fetchNextDaysWeatherData(city:String){
+//        viewModelScope.launch {
+//            try{
+//                val response = WeatherApi.weatherService.getNextDays(
+//                    apiKey = "544051addec007c3e927d2d16b40c737",
+//                    cnt = "7",
+//                    location = city
+//                )
+//
+//                _weatherNextDaysState.value = WeatherNextDaysState.Success(response)
+//            }catch (e: Exception){
+//                _weatherNextDaysState.value = WeatherNextDaysState.Error(e.message ?: "Unknown error")
+//
+//            }
+//        }
+//    }
 
-                _weatherNextDaysState.value = WeatherNextDaysState.Success(response)
-            }catch (e: Exception){
-                _weatherNextDaysState.value = WeatherNextDaysState.Error(e.message ?: "Unknown error")
-
-            }
-        }
-    }
 
 }

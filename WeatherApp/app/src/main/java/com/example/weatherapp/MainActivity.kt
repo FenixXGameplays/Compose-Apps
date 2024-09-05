@@ -60,7 +60,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.getDrawable
+import coil.compose.rememberAsyncImagePainter
 import com.example.weatherapp.model.HourDailyModel
+import com.example.weatherapp.model.HourInfo
 import com.example.weatherapp.model.WeatherModel
 import com.example.weatherapp.ui.theme.WeatherAppTheme
 import com.example.weatherapp.viewModel.WeatherHourInfoState
@@ -90,7 +92,7 @@ class MainActivity : ComponentActivity() {
         }
         weatherviewModel.fetchWeatherData("Madrid")
         weatherviewModel.fetchDailyHourWeatherData("Madrid")
-        weatherviewModel.fetchNextDaysWeatherData("Madrid")
+        //weatherviewModel.fetchWeatherNextDays("Madrid")
     }
 }
 
@@ -198,26 +200,13 @@ fun MainInfo(weatherState: WeatherState,
                 Spacer(modifier = Modifier.height(20.dp))
                 MoreData(isVisible, weatherData)
 
-                
-                when(weatherHourInfoState){
-                    is WeatherHourInfoState.Success -> {
-                        val weatherHourInfoState = weatherHourInfoState.weather
-                        val today = LocalDate.now()
-                        val tomorrow = today.plusDays(1)
-                        ShowHourTemp(weatherHourInfoState, today, tomorrow)
-                    }
-                    is WeatherHourInfoState.Error -> {
-                        Text(text = "Failed to get the Hour info")
-                    }
-                    is WeatherHourInfoState.Loading -> {
-                        CircularProgressIndicator()
-                    }
-                }
+
+                ShowNextHours(weatherHourInfoState)
 
 //                when(weatherNextDaysState){
 //                    is WeatherNextDaysState.Success -> {
 //                        val weatherNextDaysData = weatherNextDaysState.weather
-//                        Text(text = weatherNextDaysData.city.name)
+//                        Image(painter = rememberAsyncImagePainter(model = weatherNextDaysData.iconUrl), contentDescription = null)
 //                    }
 //                    is WeatherNextDaysState.Error -> {
 //                        Text(text = "Failed to get the next Days")
@@ -246,99 +235,152 @@ fun MainInfo(weatherState: WeatherState,
 }
 
 @Composable
+private fun ShowNextHours(weatherHourInfoState: WeatherHourInfoState) {
+    when (weatherHourInfoState) {
+        is WeatherHourInfoState.Success -> {
+            val weatherHourInfoState = weatherHourInfoState.weather
+            val today = LocalDate.now()
+            val tomorrow = today.plusDays(1)
+            ShowHourTemp(weatherHourInfoState, today, tomorrow)
+        }
+
+        is WeatherHourInfoState.Error -> {
+            Text(text = "Failed to get the Hour info")
+        }
+
+        is WeatherHourInfoState.Loading -> {
+            CircularProgressIndicator()
+        }
+    }
+}
+
+@Composable
 private fun ShowHourTemp(
     weatherHourInfoState: HourDailyModel,
     today: LocalDate,
     tomorrow: LocalDate,
 ) {
-    LazyRow(verticalAlignment = Alignment.CenterVertically,
-        content = {
-            items(weatherHourInfoState.list.size) { index ->
-                val data = weatherHourInfoState.list[index]
-                val dateFormatted = data.dt_txt.substring(0, data.dt_txt.indexOf(" "))
-                if (dateFormatted == today.toString() || dateFormatted == tomorrow.toString()) {
-                    Card(
-                        shape = RoundedCornerShape(6.dp),
-                        colors = CardDefaults.cardColors(),
-                        modifier = Modifier
-                            .width(150.dp)
-                            .padding(6.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+    Column {
+        Text(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            text = "Próximas horas",
+            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        )
+        LazyRow(verticalAlignment = Alignment.CenterVertically,
+            content = {
+                items(weatherHourInfoState.list.size) { index ->
+                    val data = weatherHourInfoState.list[index]
+                    val dateFormatted = data.dt_txt.substring(0, data.dt_txt.indexOf(" "))
+                    if (dateFormatted == today.toString() || dateFormatted == tomorrow.toString()) {
+                        Card(
+                            shape = RoundedCornerShape(6.dp),
+                            colors = CardDefaults.cardColors(),
+                            modifier = Modifier
+                                .width(150.dp)
+                                .padding(6.dp)
                         ) {
-                            if (dateFormatted == tomorrow.toString()) {
-                        Text(
-                            text = "Tomorrow",
-                            fontSize = 18.sp,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    } else if (dateFormatted == today.toString()) {
-                        Text(
-                            text = "Today",
-                            fontSize = 18.sp,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                            Text(
-                                text = data.dt_txt.substring(
-                                    data.dt_txt.indexOf(" ") + 1,
-                                    data.dt_txt.length - 3
-                                ) +
-                                        getPmAm(
-                                            data.dt_txt.substring(
-                                                data.dt_txt.indexOf(" ") + 1,
-                                                data.dt_txt.length - 3
-                                            )
-                                        ),
-                                fontSize = 15.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            ShowIcon(typeData = data.weather[0].main)
-                            val temp = (data.main.temp - 273.15).toString().substring(0, 2)
-                            if(data.pop * 100 > 0 && data.pop * 100 < 10){
-                                Text(
-                                    text = "Probability of Rain: ${(data.pop*100)
-                                        .toString()
-                                        .substring(
-                                            0,
-                                            1)
-                                    }%",
-                                    style = getColor(temp)
-                                )
-                            }else if(data.pop * 100 >= 10){
-                                Text(
-                                    text = "Probability of Rain: ${(data.pop*100)
-                                        .toString()
-                                        .substring(
-                                            0,
-                                            data.pop.
-                                            toString().
-                                            indexOf('.')+1)
-                                    }%",
-                                    style = getColor(temp)
-                                )
-                            }else{
-                                Text(text = "")
-                            }
-                            Text(
+                            Column(
                                 modifier = Modifier.padding(8.dp),
-                                text = "${
-                                    (data.main.temp - 273.15)
-                                        .toString().substring(0, 2)
-                                }ºC",
-                                style = getColor(temp)
-                            )
-                        }
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                ShowTodayOrTomorrowText(dateFormatted, tomorrow, today)
+                                getHour(data)
+                                ShowIcon(typeData = data.weather[0].main)
+                                val temp = (data.main.temp - 273.15).toString().substring(0, 2)
+                                ShowProbabilityOfRain(data, temp)
+                                ShowTempNextHours(data, temp)
+                            }
 
+                        }
                     }
                 }
-            }
-        })
+            })
+    }
+    
+}
+
+@Composable
+private fun ShowTempNextHours(data: HourInfo, temp: String) {
+    Text(
+        modifier = Modifier.padding(8.dp),
+        text = "${
+            (data.main.temp - 273.15)
+                .toString().substring(0, 2)
+        }ºC",
+        style = getColor(temp)
+    )
+}
+
+@Composable
+private fun ShowProbabilityOfRain(data: HourInfo, temp: String) {
+    if (data.pop * 100 > 0 && data.pop * 100 < 10) {
+        Text(
+            text = "Probability of Rain: ${
+                (data.pop * 100)
+                    .toString()
+                    .substring(
+                        0,
+                        1
+                    )
+            }%",
+            style = getColor(temp)
+        )
+    } else if (data.pop * 100 >= 10) {
+        Text(
+            text = "Probability of Rain: ${
+                (data.pop * 100)
+                    .toString()
+                    .substring(
+                        0,
+                        data.pop.toString().indexOf('.') + 1
+                    )
+            }%",
+            style = getColor(temp)
+        )
+    } else {
+        Text(text = "")
+    }
+}
+
+@Composable
+private fun getHour(data: HourInfo) {
+    Text(
+        text = data.dt_txt.substring(
+            data.dt_txt.indexOf(" ") + 1,
+            data.dt_txt.length - 3
+        ) +
+                getPmAm(
+                    data.dt_txt.substring(
+                        data.dt_txt.indexOf(" ") + 1,
+                        data.dt_txt.length - 3
+                    )
+                ),
+        fontSize = 15.sp,
+        color = Color.Black,
+        fontWeight = FontWeight.Bold,
+    )
+}
+
+@Composable
+private fun ShowTodayOrTomorrowText(
+    dateFormatted: String,
+    tomorrow: LocalDate,
+    today: LocalDate
+) {
+    if (dateFormatted == tomorrow.toString()) {
+        Text(
+            text = "Tomorrow",
+            fontSize = 18.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.Bold,
+        )
+    } else if (dateFormatted == today.toString()) {
+        Text(
+            text = "Today",
+            fontSize = 18.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.Bold,
+        )
+    }
 }
 
 fun getPmAm(text: String): String {
@@ -477,7 +519,7 @@ fun EditTextButtonBar(weatherViewModel: WeatherViewModel) {
             if(text.isNotBlank()){
                 weatherViewModel.fetchWeatherData(city = text)
                 weatherViewModel.fetchDailyHourWeatherData(city = text)
-                weatherViewModel.fetchNextDaysWeatherData(city = text)
+                //weatherViewModel.fetchWeatherNextDays(city = text)
                 text = ""
                 keyboardController?.hide()
             }

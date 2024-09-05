@@ -68,5 +68,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    implementation("com.google.accompanist:accompanist-drawablepainter:0.35.0-alpha")
+    implementation(libs.accompanist.drawablepainter)
+    implementation (libs.coil)
+    implementation (libs.coil.compose.v222)
 }
